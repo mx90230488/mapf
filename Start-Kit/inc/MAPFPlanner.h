@@ -4,6 +4,7 @@
 #include "ActionModel.h"
 #include <atomic>
 #include <boost/heap/d_ary_heap.hpp>
+#include <unordered_map>
 struct Node;
 struct TreeNode;
 
@@ -46,9 +47,11 @@ struct Conflict_my{
 struct TreeNode
 {
     SharedEnvironment node_env;
+    std::vector<int>deadlock;
     int cost=0;
     int focal;
     std::vector<int>path_empty;
+    int path_flag=0;
     high_handle handle;
     std::vector<std::vector<std::pair<int,int>>>solution;
     std::vector<Constraint_my>constraints;
@@ -101,7 +104,7 @@ typedef typename boost::heap::d_ary_heap<high_handle,boost::heap::arity<2>,boost
 class MAPFPlanner
 {
 public:
-    
+    std::unordered_map<string,int>deadlock;
     SharedEnvironment* env;
     int idx=0;
     int finish=0;
