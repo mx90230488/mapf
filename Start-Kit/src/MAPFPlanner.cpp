@@ -366,8 +366,9 @@ vector<Action> MAPFPlanner::thread_plan(){
     if(env->curr_timestep==0){
         mid_target.resize(env->num_of_agents);
         for(int i=0;i<env->num_of_agents;i++){
+            
             get_mid_target(i);
-
+            //cout<<i<<" "<<mid_target[i][0]<<endl;
         }
     }else{
          if(finish==1&&conflict_finish==1){
@@ -449,27 +450,28 @@ vector<Action> MAPFPlanner::thread_plan(){
         }
     }
     if(finish==0){
-
+        //cout<<"finish 0\n";
         if(high_open_.empty()){
             TreeNode start_node(*env);
             start_node.deadlock.resize(env->num_of_agents,-1);
             auto handle=high_open_.push(start_node);
             (*handle).handle=handle;
             high_focal_.push(handle);
+            //cout<<"push after\n";
         }
+        
         int agent=idx;
+        //cout<<"agent out"<<agent<<endl;
         //TreeNode start_node(*env);
         auto top_node=high_open_.top();
         //cout<<"top_node .solution "<<top_node.solution.size()<<endl;
+        if(lock1==false) cout<<"lock1\n";
         while(lock1==true&&agent<env->num_of_agents){
+            //cout<<"agent "<<agent<<endl;
             vector<pair<int,int>>path;
-            if(big_map==1){
-                path=top_node.single_agent_plan(env->curr_states[agent].location,env->curr_states[agent].orientation,mid_target[agent][0],agent);
-            }else{
-                path=top_node.single_agent_plan(env->curr_states[agent].location,env->curr_states[agent].orientation,env->goal_locations[agent].front().first,agent);
-            }
             
-            //start_node.solution[agent].resize(path.size(),{0,0});
+            path=top_node.single_agent_plan(env->curr_states[agent].location,env->curr_states[agent].orientation,mid_target[agent][0],agent);
+
             top_node.solution.push_back(path);
             agent++;
             if(agent==env->num_of_agents){
