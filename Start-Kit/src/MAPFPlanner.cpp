@@ -261,7 +261,7 @@ void MAPFPlanner::get_mid_target(int i){
             int new_x=vec.first*30*(j+1)+cur_x;
             int new_y=vec.second*30*(j+1)+cur_y;
             int new_target=new_x*env->cols+new_y;
-            
+            //if(i==186) cout<<"nex_x "<<new_x<<" "<<new_y<<" "<<new_target<<endl;
             int move_step=1;
             while(env->map[new_target]==1){
                 int n_x=new_target/env->cols;
@@ -330,7 +330,7 @@ vector<Action> MAPFPlanner::thread_plan(){
     
     //std::cout<<"time "<<env->curr_timestep<<std::endl;
     auto actions = std::vector<Action>(env->curr_states.size(), Action::W);
-    if(env->map_name=="sortation_large.map"||env->map_name=="warehouse_large.map") big_map=1;
+    if(env->map_name=="sortation_large.map"||env->map_name=="warehouse_large.map"||env->map_name=="brc202d.map") big_map=1;
     /*
     if(!big_map){
         int change=0;
@@ -465,13 +465,24 @@ vector<Action> MAPFPlanner::thread_plan(){
         //TreeNode start_node(*env);
         auto top_node=high_open_.top();
         //cout<<"top_node .solution "<<top_node.solution.size()<<endl;
-        if(lock1==false) cout<<"lock1\n";
+        //if(lock1==false) cout<<"lock1\n";
+        
+        vector<int>no_solution;
         while(lock1==true&&agent<env->num_of_agents){
             //cout<<"agent "<<agent<<endl;
             vector<pair<int,int>>path;
             
             path=top_node.single_agent_plan(env->curr_states[agent].location,env->curr_states[agent].orientation,mid_target[agent][0],agent);
-
+            if(path.size()==0){
+                        
+                top_node.path_empty.push_back(agent);
+                //p.path_empty.push_back(idx_1);
+                int temp=env->curr_states[agent].orientation+1;
+                if(temp==4) temp=0;
+                path.push_back({env->curr_states[agent].location,env->curr_states[agent].orientation});
+                path.push_back({env->curr_states[agent].location,temp});
+            
+            }
             top_node.solution.push_back(path);
             agent++;
             if(agent==env->num_of_agents){
@@ -479,14 +490,18 @@ vector<Action> MAPFPlanner::thread_plan(){
                 
             }
         }
+        
+       
         if(!high_open_.empty()){
             high_open_.pop();
             high_focal_.pop();
         }
+        
         idx=agent;
         if(agent==env->num_of_agents) idx=0;
-        //cout<<"solution size "<<start_node.solution.size()<<endl;
+        //cout<<"solution size "<<top_node.solution.size()<<endl;
         top_node.update_cost();
+        
         top_node.focal=focal_heuristic(top_node.solution);
         auto ha=high_open_.push(top_node);
         (*ha).handle=ha;
@@ -558,11 +573,13 @@ vector<Action> MAPFPlanner::thread_plan(){
                 high_open_.clear();
                 high_focal_.clear();
                 p.constraints.clear();
+                p.deadlock.clear();
                 p.deadlock.resize(env->num_of_agents);
                 auto handle1=high_open_.push(p);
                 (*handle1).handle=handle1;
                 high_focal_.push(handle1);
                 ret=p.solution;
+                
                 deadlock.clear();
                  
                 break;
@@ -830,7 +847,6 @@ vector<Action> MAPFPlanner::thread_plan(){
             auto tmp=high_focal_.top();
             auto node=*tmp;
             
-            
             node.solution.resize(ret.size());
             node.solution=ret;
             node.node_env=(*env);
@@ -838,6 +854,7 @@ vector<Action> MAPFPlanner::thread_plan(){
             node.deadlock.clear();
             node.deadlock.resize(env->num_of_agents,-1);
             if(!node.path_empty.empty()) node.path_flag=1;
+            else node.path_flag=0;
             //cout<<"node.solution "<<node.solution[1][0].first<<" "<<node.solution[1][0].second<<endl;
             node.update_cost();
             node.focal=focal_heuristic(node.solution);
@@ -902,10 +919,12 @@ bool TreeNode::is_constraint(int agentid,int location,int time,std::vector<Const
 vector<pair<int,int>> TreeNode::single_agent_plan(int start,int start_direct,int end,int agentid)
 {
     //cout<<"start "<<start<<" start_direct "<<start_direct<<" end "<<end<<" agentid "<<agentid<<" time "<<node_env.curr_timestep<<"-----------------------"<<endl;
-    
+    //if(node_env.map[end]==1) cout<<"error\n";
+    //if(path_flag) cout<<"path_flag=1\n";
     //cout<<"single_agent_plan  time: "<<node_env.curr_timestep<<endl;
     //int plan_time=node_env.curr_timeste
     int ob=deadlock[agentid];
+    //cout<<"ob "<<ob<<endl;
     /*
     if(ob!=-1){
         cout<<"agentid "<<agentid<<" ob "<<ob<<endl;
@@ -1099,7 +1118,6 @@ vector<pair<int,int>> TreeNode::single_agent_plan(int start,int start_direct,int
 
     }
     
-   
    
     return path;
 }
