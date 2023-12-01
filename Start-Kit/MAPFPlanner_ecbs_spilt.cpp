@@ -9,7 +9,6 @@
 #include<unordered_set>
 #include <cmath>
 #include <string>
-#include <set>
 TreeNode::TreeNode() = default;
 TreeNode::~TreeNode() = default;
 
@@ -232,208 +231,18 @@ int MAPFPlanner::focal_heuristic(vector<vector<pair<int,int>>>&solutions){
 
 void MAPFPlanner::initialize(int preprocess_time_limit)
 {
-    int total_n=env->map.size();
-    //cout<<env->map[65091]<<" "<<env->map[65092]<<" "<<env->map[65090]<<" "<<env->map[66151]<<endl;
-    std::set<int>s;
-    for(int i=0;i<total_n;i++){
-        if(env->map[i]==0) s.insert(i);
-    }
-    srand(time(NULL));
-    vector<int>dis={1,-1,env->cols,-env->cols};
-    std::set<int>s2;
-    int group_id=0;
-    while(!s.empty()){
-        auto it=s.begin();
-        auto r=rand()%s.size();
-        std::advance(it,r);
-        int select_n=*it;
-        int count=0;
-        for(int i=0;i<dis.size();i++){
-            if(dis[i]+select_n>=total_n||dis[i]+select_n<0) continue;
-            if(env->map[dis[i]+select_n]==1) count++;
-        }
-        if(count>=2) special.push_back(group_id);
-        int cur_x=select_n/env->cols;
-        int cur_y=select_n%env->cols;
-        //cout<<"current x "<<cur_x<<" "<<cur_y<<endl;
-        int dis1=20/2;
-        center[group_id]=select_n;
-        for(int x=max(0,cur_x-dis1);x<=min(env->rows-1,cur_x+dis1);x++){
-            for(int y=max(0,cur_y-dis1);y<=min(env->cols-1,cur_y+dis1);y++){
-                int new_location=x*env->cols+y;
-                if(env->map[new_location]==1) continue;
-                int dist=sqrt(pow(x-cur_x,2)+pow(y-cur_y,2));
-                if(dist<=dis1){
-                    if(s.find(new_location)==s.end()) continue;
-                    group[new_location]=group_id;
-                    s.erase(new_location);
-                }
-            }
-        }
-        group_id++;
-    }
-    
-    vector<pair<int,int>>d={{1,0},{-1,0},{0,1},{0,-1}};
-    for(int i=0;i<env->rows;i++){
-        for(int j=0;j<env->cols;j++){
-            int location=i*env->cols+j;
-            
-            if(env->map[location]==1) continue;
-            for(int k=0;k<d.size();k++){
-                int new_l=(i+d[k].first)*env->cols+(j+d[k].second);
-                if(new_l<0||new_l>=total_n) continue;
-                if(env->map[new_l]==1) continue;
-                if(group[location]==group[new_l])continue;
-                int c_x=center[group[new_l]]/env->cols;
-                int c_y=center[group[new_l]]%env->cols;
-                int c1_x=center[group[location]]/env->cols;
-                int c1_y=center[group[location]]%env->cols;
-                int dist=sqrt(pow(c_x-c1_x,2)+pow(c_y-c1_y,2));
-                if(std::find(special.begin(),special.end(),group[new_l])!=special.end()){
-                    dist*=10;
-                }
-                if(std::find(special.begin(),special.end(),group[location])!=special.end()){
-                    dist*=10;
-                }
-                graph[group[location]].insert({group[new_l],dist});
-                graph[group[new_l]].insert({group[location],dist});
-            }
-        }
-    }
-    //cout<<"ok\n";
-    graph2.resize(graph.size());
-    for(auto g:graph){
-        //cout<<"g.first "<<g.first<<endl;
-        for(auto a:g.second){
-            graph2[g.first].push_back({a.first,a.second});
-        }
-    }
     /*
-    all_pair.resize(center.size());
-    for(int i=0;i<center.size();i++){
-        all_pair[i].resize(center.size());
-    }
-    for(int i=0;i<center.size();i++){
-        priority_queue<pair<int,int>>q;
-        vector<int>cost(center.size(),INT_MAX);
-        vector<int>parent(center.size(),-1);
-        q.push({0,i});
-        cost[i]=0;
-        while(!q.empty()){
-            int d=q.top().first;
-            int id=q.top().second;
-            q.pop();
-            for(auto a:graph[id]){
-                int neighbor=a.first;
-                int weight=a.second;
-                if(cost[neighbor]>cost[id]+weight){
-                    cost[neighbor]=cost[id]+weight;
-                    parent[neighbor]=id;
-                    q.push({cost[neighbor],neighbor});
-                }
-            }
-        }
-        for(int j=0;j<center.size();j++){
-            int p=parent[j];
-            vector<int>path;
-            path.push_back(j);
-            while(p!=-1){
-                path.insert(path.begin(),p);
-                p=parent[p];
-            }
-            all_pair[i][j]=path;
-        }
-    }
+    std::filesystem::path currpath=std::filesystem::current_path();
+    string path_str=currpath.string();
+    cout<<" path_str "<<path_str<<endl;
+    path_str+="/"env->map_name
     */
-    
     cout << "planner initialize done" << endl;
 
 }
-
 void MAPFPlanner::get_mid_target(int i){
-    if(big_map==0){
-        mid_target[i].push_back(env->goal_locations[i].front().first);
-        return ;
-    }
-    int t=env->goal_locations[i].front().first;
-    int t_center=group[t];
-    //cout<<"t_center "<<t_center<<endl;
-    vector<int>path;
-    int cur=env->curr_states[i].location;
-    int cur_center=group[cur];
-    //cout<<"cur_center "<<cur_center<<"i "<<i<<endl;
-    std::priority_queue<pair<int,int>,vector<pair<int,int>>,std::greater<pair<int,int>>>q;
-    vector<long>dist(center.size(),LONG_MAX);
-    vector<int>parent(center.size(),-1);
-    dist[cur_center]=0;
-    q.push({0,cur_center});
-    while(!q.empty()){
-        int id=q.top().second;
-        int cur_dist=q.top().first;
-        q.pop();
-        for(auto n:graph2[id]){
-            int v=n.first;
-            long w=n.second;
-            
-            if(dist[v]>dist[id]+w){
-                
-                    //cout<<dist[v]<<" "<<dist[id]<<" "<<w<<" "<<v<<" "<<id<<endl;
-                
-                if(dist[id]+w>INT_MAX) dist[v]=INT_MAX;
-                //cout<<dist[v]<<" "<<dist[id]<<" "<<w<<" "<<v<<" "<<id<<endl;
-                else dist[v]=dist[id]+w;
-                
-                parent[v]=id;
-                q.push({dist[v],v});
-            }
-        }
-    }
-    //cout<<"center dis "<<dist[t_center]<<endl;
-    //cout<<"q ok\n";
-    int p=parent[t_center];
-    if(t!=center[group[t]]){
-        path.push_back(t_center);
-    }
-    while(p!=-1){
-        //cout<<"p "<<p<<endl;
-        path.insert(path.begin(),p);
-        p=parent[p];
-    }
-    //if(std::find(path.begin(),path.end(),cur_center)==path.end()){
-        path.insert(path.begin(),cur_center);
     
-    for(int k=0;k<path.size()-1;k++){
-        for(int j=0;j<graph2[path[k]].size();j++){
-            if(graph2[path[k]][j].first==path[k+1]){
-                if(std::find(special.begin(),special.end(),path[k+1])!=special.end()){
-                    graph2[path[k]][j].second*=10;
-                    if(graph2[path[k]][j].second>INT_MAX) graph2[path[k]][j].second=INT_MAX;
-                    //if(graph2[path[k]][j].second<0) cout<<"graph2 "<<graph2[path[k]][j].first<<" "<<path[k]<<endl;
-                }else{
-                    graph2[path[k]][j].second+=10;
-                }
-            }
-        }
-        for(int j=0;j<graph2[path[k+1]].size();j++){
-            if(graph2[path[k+1]][j].first==path[k]){
-                if(std::find(special.begin(),special.end(),path[k])!=special.end()){
-                    graph2[path[k+1]][j].second*=10;
-                    if(graph2[path[k+1]][j].second>INT_MAX) graph2[path[k+1]][j].second=INT_MAX;
-                    //if(graph2[path[k+1]][j].second<0) cout<<"graph2 "<<graph2[path[k+1]][j].first<<" "<<path[k+1]<<endl;
-                }else
-                    graph2[path[k+1]][j].second+=10;
-            }
-        }
-    }
-    for(int j=0;j<path.size();j++){
-        mid_target[i].push_back(center[path[j]]);
-    }
-    if(std::find(mid_target[i].begin(),mid_target[i].end(),t)==mid_target[i].end()){
-        mid_target[i].push_back(t);
-    }
-   
     
-    /*
         if(big_map==0){
             mid_target[i].push_back(env->goal_locations[i].front().first);
             return ;
@@ -473,55 +282,55 @@ void MAPFPlanner::get_mid_target(int i){
         }
         if(std::find(mid_target[i].begin(),mid_target[i].end(),t)==mid_target[i].end())
             mid_target[i].push_back(t);
-    */
         
-}
-void MAPFPlanner::mid_target_warehouse(int i){
-    if(big_map==0){
-            mid_target[i].push_back(env->goal_locations[i].front().first);
-            return ;
-        }
-        int t=env->goal_locations[i].front().first;
-        int t_x=t/env->cols;
-        int t_y=t%env->cols;
-        int cur=env->curr_states[i].location;
-        int cur_x=cur/env->cols;
-        int cur_y=cur%env->cols;
-        int dis=sqrt(pow(t_x-cur_x,2)+pow(t_y-cur_y,2));
-        //cout<<"target "<<t_x<<" "<<t_y<<" "<<cur_x<<" "<<cur_y<<" "<<dis<<" "<<i<<endl;
-        int dis2=dis;
-        std::pair<float,float>vec={(t_x-cur_x)*1.0/dis2,(t_y-cur_y)*1.0/dis2};
-        for(int j=0;j<dis2/30;j++){
-            int new_x=vec.first*30*(j+1)+cur_x;
-            int new_y=vec.second*30*(j+1)+cur_y;
+        
+        /*
+        while(dis2>30){
+            std::pair<float,float>vec={(t_x-cur_x)*1.0/dis2,(t_y-cur_y)*1.0/dis2};
+            if(i==758)cout<<"vec "<<vec.first<<" "<<vec.second<<endl;
+            
+            int new_x=vec.first*30+cur_x;
+            if(t_x==cur_x) new_x=cur_x;
+            int new_y=vec.second*30+cur_y;
+            if(t_y==cur_y) new_y=cur_y;
             int new_target=new_x*env->cols+new_y;
-            //if(i==186) cout<<"nex_x "<<new_x<<" "<<new_y<<" "<<new_target<<endl;
+            if(i==758) cout<<"new_target "<<new_x<<" "<<new_y<<" dis "<<dis2<<endl;
             int move_step=1;
             while(env->map[new_target]==1){
                 int n_x=new_target/env->cols;
                 int n_y=new_target%env->cols;
                 if(n_x<env->rows&&n_y+move_step<env->cols&&env->map[new_target+move_step]==0){
                     new_target+=move_step;
-                }else if(n_x<env->rows&&n_y-move_step>=0&&env->map[new_target-move_step]==0){
+                }else if(n_x<env->rows&&n_y-move_step<env->cols&&env->map[new_target-move_step]==0){
                     new_target-=move_step;
                 }else if(n_x+move_step<env->rows&&n_y<env->cols&&env->map[new_target+env->cols*move_step]==0){
                     new_target+=env->cols*move_step;
-                }else if(n_x-move_step>=0&&n_y<env->cols&&env->map[new_target-env->cols*move_step]==0){
+                }else if(n_x-move_step<env->rows&&n_y<env->cols&&env->map[new_target-env->cols*move_step]==0){
                     new_target-=env->cols*move_step;
                 }else move_step++;
-                
             }
             if(std::find(mid_target[i].begin(),mid_target[i].end(),new_target)==mid_target[i].end())
                 mid_target[i].push_back(new_target);
+            //cout<<"agent "<<i<<" target "<<new_target<<" ";
+            dis2=sqrt(pow(new_target/env->cols-t_x,2)+pow(new_target%env->cols-t_y,2));
+            cur_x=new_target/env->cols;
+            cur_y=new_target%env->cols;
+            //cout<<"dis2 "<<dis2<<endl;
         }
         if(std::find(mid_target[i].begin(),mid_target[i].end(),t)==mid_target[i].end())
             mid_target[i].push_back(t);
+        */
+        //path=start_node_.single_agent_plan(env->curr_states[i].location,env->curr_states[i].orientation,start_node_.mid_target[i][0],i);
+        //start_node_.solution[i].resize(path.size(),{0,0});
+        //start_node_.solution[i]=path;
+        //if(i==env->num_of_agents-1) finish=1;
+    
 }
 vector<Action> MAPFPlanner::thread_plan(){
     
     //std::cout<<"time "<<env->curr_timestep<<std::endl;
     auto actions = std::vector<Action>(env->curr_states.size(), Action::W);
-    if(env->map_name=="sortation_large.map"||env->map_name=="warehouse_large.map"||env->map_name=="brc202d.map"||env->map_name=="Paris_1_256.map") big_map=1;
+    if(env->map_name=="sortation_large.map"||env->map_name=="warehouse_large.map"||env->map_name=="brc202d.map") big_map=1;
     /*
     if(!big_map){
         int change=0;
@@ -556,18 +365,9 @@ vector<Action> MAPFPlanner::thread_plan(){
     */
     if(env->curr_timestep==0){
         mid_target.resize(env->num_of_agents);
-        finish_path.resize(env->num_of_agents);
-        for(int i=idx;i<env->num_of_agents;i++){
-            if(lock1==false){
-                idx=i;
-                break;
-            }
-            //cout<<i<<"============\n";
-            if(env->map_name=="brc202d.map"||env->map_name=="Paris_1_256.map"){
-                get_mid_target(i);
-            }else
-                mid_target_warehouse(i);
-            if(i==env->num_of_agents-1) idx=0;
+        for(int i=0;i<env->num_of_agents;i++){
+            
+            get_mid_target(i);
             //cout<<i<<" "<<mid_target[i][0]<<endl;
         }
     }else{
@@ -585,47 +385,15 @@ vector<Action> MAPFPlanner::thread_plan(){
                     break;
                 }
                 if(mid_target[i][0]==env->curr_states[i].location){
-                    
                     flag=1;
-                    if(env->map_name=="brc202d.map"||env->map_name=="Paris_1_256.map"){
-                    finish_path[i].push_back(*mid_target[i].begin());
-                    if(finish_path[i].size()>=2){
-                        int i1=finish_path[i][0];
-                        int i2=finish_path[i][1];
-                        if(center[group[i1]]==i1&&center[group[i2]]==i2){
-                            for(auto g:graph2[group[i1]]){
-                                if(g.first==group[i2]){
-                                    if(std::find(special.begin(),special.end(),group[i2])!=special.end()){
-                                        g.second/=10;
-                                    }else{
-                                        g.second-=10;
-                                    }
-                                    
-                                }
-                            }
-                            for(auto g:graph2[group[i2]]){
-                                if(g.first==group[i1]){
-                                    if(std::find(special.begin(),special.end(),group[i1])!=special.end()){
-                                        g.second/=10;
-                                    }else
-                                        g.second-=10;
-                                }
-                            }
-                        }
-                        finish_path[i].erase(finish_path[i].begin());
-                    }
-                    }
+                    //cout<<"finish "<<i<<endl;;
+
                     mid_target[i].erase(mid_target[i].begin());
                     if(mid_target[i].empty()){
-                        if(env->map_name=="brc202d.map"||env->map_name=="Paris_1_256.map")
-                            get_mid_target(i);
-                        else mid_target_warehouse(i);
+                        get_mid_target(i);
                     }
-                    if(env->curr_states[i].location==mid_target[i][0]){
-                        mid_target[i].erase(mid_target[i].begin());
-                    }
+                    
                     auto path=open_top.single_agent_plan(env->curr_states[i].location,env->curr_states[i].orientation,mid_target[i][0],i);
-                    //cout<<"as task single\n";
                     //if(env->curr_timestep>=260) cout<<"single plan after "<<i<<endl;
                     if(path.empty()){
                         open_top.path_empty.push_back(i);
@@ -682,7 +450,6 @@ vector<Action> MAPFPlanner::thread_plan(){
         }
     }
     if(finish==0){
-        if(lock1==false) return actions;
         //cout<<"finish 0\n";
         if(high_open_.empty()){
             TreeNode start_node(*env);
@@ -704,7 +471,7 @@ vector<Action> MAPFPlanner::thread_plan(){
         while(lock1==true&&agent<env->num_of_agents){
             //cout<<"agent "<<agent<<endl;
             vector<pair<int,int>>path;
-            //cout<<"mid_target "<<group[mid_target[agent][0]]<<endl;
+            
             path=top_node.single_agent_plan(env->curr_states[agent].location,env->curr_states[agent].orientation,mid_target[agent][0],agent);
             if(path.size()==0){
                         
@@ -820,14 +587,6 @@ vector<Action> MAPFPlanner::thread_plan(){
             else if(hasconflict(p)){
                 //cout<<"conflict\n";
                 Conflict_my conflict =getFirstConflict(p);
-                /*
-                string str=std::to_string(conflict.conflict_agent.first)+" "+std::to_string(conflict.conflict_agent.second);
-                deadlock[str]++;
-                if(deadlock[str]>=10){
-                    p.deadlock[conflict.conflict_agent.first]=conflict.location1;
-                    p.deadlock[conflict.conflict_agent.second]=conflict.location2;
-                }
-                */
                 //tree.pop_back();
                 
                 for(int i=0;i<2;i++){
@@ -926,18 +685,12 @@ vector<Action> MAPFPlanner::thread_plan(){
             }else if(hasEdgeConflict(p)){
                 //cout<<"EdgeConflict----\n";
                 auto conflict=getFirstConflict(p);
-                /*
                 string str=std::to_string(conflict.conflict_agent.first)+" "+std::to_string(conflict.conflict_agent.second);
                 deadlock[str]++;
                 if(deadlock[str]>=10){
                     p.deadlock[conflict.conflict_agent.first]=conflict.location1;
                     p.deadlock[conflict.conflict_agent.second]=conflict.location2;
                 }
-                cout<<"deadlock\n";
-                for(auto d:deadlock){
-                    cout<<"first "<<d.first<<" -> "<<d.second<<endl;
-                }
-                */
                 //cout<<conflict.location1<<" "<<conflict.location2<<" "<<conflict.time<<" "<<conflict.conflict_agent.first<<" "<<conflict.conflict_agent.second<<endl;
                 for(int i=0;i<2;i++){
                     TreeNode A=p;
@@ -1166,12 +919,12 @@ bool TreeNode::is_constraint(int agentid,int location,int time,std::vector<Const
 vector<pair<int,int>> TreeNode::single_agent_plan(int start,int start_direct,int end,int agentid)
 {
     //cout<<"start "<<start<<" start_direct "<<start_direct<<" end "<<end<<" agentid "<<agentid<<" time "<<node_env.curr_timestep<<"-----------------------"<<endl;
-    
+    //if(node_env.map[end]==1) cout<<"error\n";
+    //if(path_flag) cout<<"path_flag=1\n";
+    //cout<<"single_agent_plan  time: "<<node_env.curr_timestep<<endl;
+    //int plan_time=node_env.curr_timeste
     int ob=deadlock[agentid];
-    
-    if(ob!=-1){
-        //cout<<node_env.map[58411]<<" "<<node_env.map[58413]<<" "<<node_env.map[57882]<<" "<<node_env.map[58942]<<endl;
-    }
+    //cout<<"ob "<<ob<<endl;
     /*
     if(ob!=-1){
         cout<<"agentid "<<agentid<<" ob "<<ob<<endl;
@@ -1214,13 +967,11 @@ vector<pair<int,int>> TreeNode::single_agent_plan(int start,int start_direct,int
         
         //cout<<"low open size "<<open_set.size()<<" focal size "<<focal_set.size()<<endl;
         //mx=std::max(mx,(int)open_set.size());
-        
         if(!path_flag){
             //if(agentid==758) cout<<open_set.size()<<" ";
             count++;
             if(count>=5000) break;
         }
-        
         int old_best=best_cost;
         best_cost=open_set.top().fscore;
         
@@ -1290,8 +1041,7 @@ vector<pair<int,int>> TreeNode::single_agent_plan(int start,int start_direct,int
                 continue;
             }
             if(ob!=-1){
-                if(neighbor.location==ob&&ob!=end&&ob!=start) continue;
-                
+                if(neighbor.location==ob&&ob!=end) continue;
             }
             /*
             int flag=0;
@@ -1364,9 +1114,10 @@ vector<pair<int,int>> TreeNode::single_agent_plan(int start,int start_direct,int
         }
         
         
-        
+        //cout<<"neigbor after--\n";
+
     }
-   //if(path.empty()) cout<<"path empty()\n";
+    
    
     return path;
 }

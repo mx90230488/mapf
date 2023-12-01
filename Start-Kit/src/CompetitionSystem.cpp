@@ -18,6 +18,7 @@ list<Task> BaseSystem::move(vector<Action>& actions)
             fast_mover_feasible = false;
             planner_movements[k].push_back(Action::NA);
         }
+        
         else
         {
             planner_movements[k].push_back(actions[k]);
